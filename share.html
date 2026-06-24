@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2 family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -66,16 +66,23 @@
     .expiry-pill.live    { background: #edfdf4; color: #1a7a45; }
     .expiry-pill.expired { background: #fef0f0; color: #c0392b; }
 
-    /* ── Map Container (Padded & Rounded to match the image) ── */
+    /* ── Map Container ── */
     #map-wrap {
       flex: 1;
       position: relative;
-      margin: 25px;
-      border-radius: 36px;
+      margin: 16px;
+      border-radius: 24px;
       border: 1px solid rgba(0, 0, 0, 0.05);
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
       overflow: hidden;
       background: #fff;
+    }
+
+    @media (min-width: 768px) {
+      #map-wrap {
+        margin: 25px;
+        border-radius: 36px;
+      }
     }
 
     #map { 
@@ -84,7 +91,6 @@
       transition: filter 0.4s ease;
     }
 
-    /* Blur state when session expires or error happens */
     .blur-map {
       filter: blur(12px) grayscale(30%);
       pointer-events: none;
@@ -135,15 +141,37 @@
     .error-state h2 { font-size: 18px; font-weight: 700; color: #1a1a2e; }
     .error-state p  { font-size: 14px; color: #666; max-width: 280px; line-height: 1.5; }
 
-    /* ── FAB buttons (right side) ── */
-    .fab-group {
+    /* ── DYNAMIC PANEL CONTAINER (Prevents overlaps) ── */
+    .bottom-panel-container {
       position: absolute;
+      bottom: 24px; /* Increased bottom margin away from screen edges */
+      left: 16px;
       right: 16px;
-      bottom: 240px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px; /* Gap between the floating button and the card below it */
       z-index: 300;
+      pointer-events: none; /* Allows interacting with map elements behind empty spaces */
+    }
+
+    @media (min-width: 480px) {
+      .bottom-panel-container {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 440px;
+        bottom: 30px; /* Enhanced bottom padding for desktop web setup */
+      }
+    }
+
+    /* ── FAB buttons ── */
+    .fab-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      width: 100%;
+      pointer-events: auto; /* Re-enable pointer interactions */
     }
 
     .fab {
@@ -152,7 +180,7 @@
       border-radius: 50%;
       background: #fff;
       border: none;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.16);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -169,30 +197,31 @@
 
     /* ── Info card ── */
     .info-card {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
       background: #fff;
       border-radius: 20px;
-      box-shadow: 0 4px 32px rgba(0,0,0,0.18);
-      padding: 18px 20px 16px;
-      width: calc(100vw - 64px);
-      max-width: 420px;
-      z-index: 300;
+      box-shadow: 0 6px 36px rgba(0,0,0,0.16);
+      padding: 18px;
+      width: 100%;
       display: none;
+      pointer-events: auto; /* Re-enable pointer interactions */
+    }
+
+    @media (min-width: 480px) {
+      .info-card {
+        padding: 20px 22px 18px;
+      }
     }
 
     .info-top {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .info-avatar {
-      width: 44px;
-      height: 44px;
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
       object-fit: cover;
       background: #6c47ff;
@@ -201,8 +230,8 @@
     }
 
     .info-avatar-fallback {
-      width: 44px;
-      height: 44px;
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
       background: #6c47ff;
       display: flex;
@@ -216,8 +245,9 @@
     }
 
     .info-meta { flex: 1; min-width: 0; }
+    
     .info-name {
-      font-size: 17px;
+      font-size: 18px;
       font-weight: 700;
       color: #1a1a2e;
       white-space: nowrap;
@@ -225,7 +255,7 @@
       text-overflow: ellipsis;
     }
 
-    .info-updated { font-size: 12px; color: #999; margin-top: 2px; }
+    .info-updated { font-size: 12px; color: #888; margin-top: 2px; }
 
     .battery-tag {
       display: flex;
@@ -239,11 +269,15 @@
     .battery-tag.low { color: #c0392b; }
     .battery-tag.mid { color: #d68910; }
 
+    /* Address Style: Complete full wrap, light/thin weight, deep black text */
     .info-address {
-      font-size: 13px;
-      color: #555;
-      line-height: 1.45;
-      margin-bottom: 14px;
+      font-size: 13.5px;
+      font-weight: 400;
+      color: #000000;
+      line-height: 1.5;
+      margin-bottom: 16px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     .info-actions { display: flex; gap: 10px; }
@@ -354,31 +388,33 @@
       <p id="error-msg">This link is invalid or the live session has ended.</p>
     </div>
 
-    <div class="fab-group" id="fab-group" style="display:none">
-      <button class="fab" id="btn-my-location" title="My location">
-        <img src="asset/mylocation.png" alt="My location"
-             onerror="this.outerHTML='<span class=\'fab-emoji\'>📌</span>'" />
-      </button>
-    </div>
-
-    <div class="info-card" id="info-card">
-      <div class="info-top">
-        <div id="card-avatar-wrap"></div>
-        <div class="info-meta">
-          <div class="info-name" id="card-name"></div>
-          <div class="info-updated" id="card-updated"></div>
-        </div>
-        <div id="card-battery"></div>
+    <div class="bottom-panel-container">
+      <div class="fab-group" id="fab-group" style="display:none">
+        <button class="fab" id="btn-my-location" title="My location">
+          <img src="asset/mylocation.png" alt="My location"
+               onerror="this.outerHTML='<span class=\'fab-emoji\'>📌</span>'" />
+        </button>
       </div>
 
-      <div class="info-address" id="card-address"></div>
+      <div class="info-card" id="info-card">
+        <div class="info-top">
+          <div id="card-avatar-wrap"></div>
+          <div class="info-meta">
+            <div class="info-name" id="card-name"></div>
+            <div class="info-updated" id="card-updated"></div>
+          </div>
+          <div id="card-battery"></div>
+        </div>
 
-      <div class="info-actions">
-        <a class="directions-btn" id="directions-btn" href="#" target="_blank" rel="noopener">
-          <img src="asset/directions.png" alt="" onerror="this.style.display='none'" />
-          Directions
-        </a>
-        <button class="copy-btn" id="copy-btn">Copy link</button>
+        <div class="info-address" id="card-address"></div>
+
+        <div class="info-actions">
+          <a class="directions-btn" id="directions-btn" href="#" target="_blank" rel="noopener">
+            <img src="asset/directions.png" alt="" onerror="this.style.display='none'" />
+            Directions
+          </a>
+          <button class="copy-btn" id="copy-btn">Copy link</button>
+        </div>
       </div>
     </div>
   </div>
@@ -440,6 +476,7 @@
       return `${Math.floor(diff / 3600)}h ago`;
     }
 
+    // Fixed template literal mapping logic configuration syntax structures
     function batteryHTML(pct) {
       const cls  = pct <= 20 ? 'low' : pct <= 50 ? 'mid' : '';
       const icon = pct <= 20 ? '🪫' : '🔋';
@@ -466,12 +503,10 @@
       document.getElementById('info-card').style.display     = 'none';
       document.getElementById('fab-group').style.display     = 'none';
       
-      // Show error overlay and blur map layer
       document.getElementById('error-state').style.display   = 'flex';
       document.getElementById('error-msg').textContent       = msg;
       document.getElementById('map').classList.add('blur-map');
       
-      // Remove tracker marker if existing
       if (marker) {
         map.removeLayer(marker);
         marker = null;
@@ -507,13 +542,12 @@
       navigator.clipboard.writeText(location.href).then(() => {
         const btn = document.getElementById('copy-btn');
         btn.textContent = '✅ Copied!';
-        setTimeout(() => { btn.textContent = '🔗 Copy link'; }, 2000);
+        setTimeout(() => { btn.textContent = 'Copy link'; }, 2000);
       });
     });
 
     // ── Main update ──
     function update(d) {
-      // Direct session expiration check
       const exp = expiryText(d.expiresAt);
       if (exp.isExpired) {
         showError('This live session has ended.');
@@ -544,15 +578,15 @@
         map.panTo(latlng, { animate: true, duration: 0.8 });
       }
 
-      // Card content
+      // Card data rendering configurations
       document.getElementById('card-avatar-wrap').innerHTML  = avatarHTML(d.profileImageUrl, d.userName);
       document.getElementById('card-name').textContent       = d.userName || 'Unknown';
       document.getElementById('card-battery').innerHTML      = batteryHTML(d.battery ?? 0);
       document.getElementById('card-address').textContent    = d.address || 'Address unavailable';
       document.getElementById('card-updated').textContent    = 'Updated ' + timeAgo(d.timeStamp);
 
-      // Corrected Directions URL structure
-      document.getElementById('directions-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${d.latitude},${d.longitude}`;
+      // Deep linked navigation actions structural parameters
+      document.getElementById('directions-btn').href = `https://www.google.com/maps/search/?api=1&query=${d.latitude},${d.longitude}`;
 
       const pill = document.getElementById('expiry-pill');
       pill.textContent = '⏱ ' + exp.text;
@@ -563,7 +597,6 @@
         const el = document.getElementById('card-updated');
         if (el) el.textContent = 'Updated ' + timeAgo(d.timeStamp);
         
-        // Re-verify expiration during runtime intervals
         if (Date.now() > d.expiresAt) {
           showError('This live session has ended.');
           clearInterval(updateTimer);
