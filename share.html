@@ -287,14 +287,18 @@
     .copy-btn:hover { background: #ebebeb; }
 
     /* ── Marker ── */
-    .marker-wrap { display: flex; flex-direction: column; align-items: center; }
+   .marker-wrap { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+    }
 
     .marker-bubble {
       width: 52px;
       height: 52px;
       border-radius: 50% 50% 50% 4px;
       border: 3px solid #fff;
-      box-shadow: 0 3px 14px rgba(0,0,0,0.25);
+      box-shadow: 0 4px 16px rgba(108, 71, 255, 0.25);
       overflow: hidden;
       background: #6c47ff;
       display: flex;
@@ -302,16 +306,24 @@
       justify-content: center;
       font-weight: 700;
       color: #fff;
+      transform-origin: bottom left; 
       transform: rotate(-45deg);
-      animation: pulse 2.5s infinite;
+      animation: breathe 2.4s ease-in-out infinite alternate;
     }
 
     .marker-bubble img { width: 100%; height: 100%; object-fit: cover; transform: rotate(45deg); }
     .marker-inner-text { transform: rotate(45deg); font-size: 18px; font-weight: 700; color: #fff; }
 
-    @keyframes pulse {
-      0%,100% { box-shadow: 0 3px 14px rgba(0,0,0,0.25), 0 0 0 0   rgba(108,71,255,0.4); }
-      50%      { box-shadow: 0 3px 14px rgba(0,0,0,0.25), 0 0 0 10px rgba(108,71,255,0);   }
+    @keyframes breathe {
+      0% {
+        transform: rotate(-45deg) scale(0.96);
+        box-shadow: 0 3px 10px rgba(108, 71, 255, 0.2);
+      }
+      100% {
+        transform: rotate(-45deg) scale(1.04);
+        box-shadow: 0 5px 18px rgba(108, 71, 255, 0.35);
+      }
+    }
     }
 
     .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
