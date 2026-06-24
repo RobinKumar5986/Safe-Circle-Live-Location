@@ -14,7 +14,7 @@
     body {
       font-family: 'Inter', system-ui, sans-serif;
       background: #f5f5f7;
-      height: 100vh;
+      height: 100dvh; /* Modernized to prevent mobile browser toolbar layout clipping */
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -64,7 +64,7 @@
     .expiry-pill.live    { background: #edfdf4; color: #1a7a45; }
     .expiry-pill.expired { background: #fef0f0; color: #c0392b; }
 
-    /* ── Map Canvas Wrapper (Full viewport behind bottom sheet) ── */
+    /* ── Map Canvas Wrapper ── */
     #map-wrap {
       flex: 1;
       position: relative;
@@ -127,11 +127,11 @@
     .error-state h2 { font-size: 18px; font-weight: 700; color: #1a1a2e; }
     .error-state p  { font-size: 14px; color: #666; max-width: 280px; line-height: 1.5; }
 
-    /* ── Native Floating Action Button ── */
+    /* ── Floating Action Button ── */
     .fab-group {
       position: absolute;
       right: 16px;
-      bottom: calc(260px + 20px); /* Dynamically offsets above native default bottom sheet height */
+      bottom: calc(260px + 20px); 
       z-index: 300;
       transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -154,7 +154,7 @@
     .fab img { width: 24px; height: 24px; object-fit: contain; }
     .fab-emoji { font-size: 20px; }
 
-    /* ── Native Mobile Bottom Sheet Component ── */
+    /* ── Mobile Bottom Sheet Component ── */
     .bottom-sheet {
       position: absolute;
       bottom: 0;
@@ -167,7 +167,7 @@
       z-index: 350;
       display: flex;
       flex-direction: column;
-      max-height: 50vh; /* Limits maximum expansion footprint */
+      max-height: 60dvh; /* Expanded and shifted to dynamic dvh format so it won't overflow screen bounds */
       min-height: 250px;
       transform: translateY(100%);
       transition: transform 0.4s cubic-bezier(0.1, 1, 0.1, 1);
@@ -177,7 +177,6 @@
       transform: translateY(0);
     }
 
-    /* Drag Handle Handlebar Visual Element */
     .sheet-handle {
       width: 36px;
       height: 4px;
@@ -187,7 +186,6 @@
       flex-shrink: 0;
     }
 
-    /* Scrollable Layout Body Element Container */
     .sheet-content {
       flex: 1;
       overflow-y: auto;
@@ -447,7 +445,7 @@
 
     function makeMarkerIcon(imgUrl, name) {
       const inner = imgUrl
-        ? `<img src="${imgUrl}" alt="" onerror="this.parentElement.innerHTML='<span class=\\'marker-inner-text\\'>${initials(name)}</span>'" />`
+        ? `<img src="${imgUrl}" alt="" onerror="this.parentElement.innerHTML='<span class=\'marker-inner-text\\'>${initials(name)}</span>'" />`
         : `<span class="marker-inner-text">${initials(name)}</span>`;
       return L.divIcon({
         html:        `<div class="marker-wrap"><div class="marker-bubble">${inner}</div></div>`,
@@ -504,7 +502,6 @@
       pill.className   = 'expiry-pill expired';
     }
 
-    // Adjusting functional floating buttons layouts responsively based on rendered heights
     function adjustFabPosition() {
       const card = document.getElementById('info-card');
       const fabGroup = document.getElementById('fab-group');
@@ -574,21 +571,19 @@
         map.panTo(latlng, { animate: true, duration: 0.8 });
       }
 
-      // Populate layout elements
       document.getElementById('card-avatar-wrap').innerHTML  = avatarHTML(d.profileImageUrl, d.userName);
       document.getElementById('card-name').textContent       = d.userName || 'Unknown';
       document.getElementById('card-battery').innerHTML      = batteryHTML(d.battery ?? 0);
       document.getElementById('card-address').textContent    = d.address || 'Address unavailable';
       document.getElementById('card-updated').textContent    = 'Last updated ' + timeAgo(d.timeStamp);
 
-      // Dynamically corrected template strings URL configuration 
-      document.getElementById('directions-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${d.latitude},${d.longitude}`;
+      // Fixed String template injection formatting syntax for Google Maps
+      document.getElementById('directions-btn').href = `https://www.google.com/maps/search/?api=1&query=${d.latitude},${d.longitude}`;
 
       const pill = document.getElementById('expiry-pill');
       pill.textContent = exp.text;
       pill.className   = 'expiry-pill ' + exp.cls;
 
-      // Ensure button positions adapt dynamically after parsing address sizes
       setTimeout(adjustFabPosition, 50);
 
       if (updateTimer) clearInterval(updateTimer);
@@ -603,7 +598,6 @@
       }, 15000);
     }
 
-    // Resize listeners tracking structural canvas modifications
     window.addEventListener('resize', adjustFabPosition);
 
     // ── Firebase listener ──
