@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Safe Circle — Live Location</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -45,7 +45,6 @@
     }
 
     .logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
-
     .brand { font-size: 15px; font-weight: 700; color: #1a1a2e; }
     .brand span { color: #6c47ff; }
 
@@ -62,27 +61,17 @@
       color: #555;
       white-space: nowrap;
     }
-
     .expiry-pill.live    { background: #edfdf4; color: #1a7a45; }
     .expiry-pill.expired { background: #fef0f0; color: #c0392b; }
 
-    /* ── Map Container ── */
+    /* ── Map Canvas Wrapper (Full viewport behind bottom sheet) ── */
     #map-wrap {
       flex: 1;
       position: relative;
-      margin: 16px;
-      border-radius: 24px;
-      border: 1px solid rgba(0, 0, 0, 0.05);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
+      width: 100%;
+      height: 100%;
       background: #fff;
-    }
-
-    @media (min-width: 768px) {
-      #map-wrap {
-        margin: 25px;
-        border-radius: 36px;
-      }
+      overflow: hidden;
     }
 
     #map { 
@@ -96,7 +85,7 @@
       pointer-events: none;
     }
 
-    /* ── Loading overlay ── */
+    /* ── State Overlays ── */
     .map-loading {
       position: absolute;
       inset: 0;
@@ -117,11 +106,9 @@
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
-
     @keyframes spin { to { transform: rotate(360deg); } }
     .map-loading p { font-size: 14px; color: #888; font-weight: 500; }
 
-    /* ── Error overlay ── */
     .error-state {
       position: absolute;
       inset: 0;
@@ -130,48 +117,23 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      background: rgba(245, 245, 247, 0.85);
+      background: rgba(245, 245, 247, 0.95);
       backdrop-filter: blur(4px);
       z-index: 400;
       text-align: center;
       padding: 24px;
     }
-
     .error-state .icon { font-size: 40px; }
     .error-state h2 { font-size: 18px; font-weight: 700; color: #1a1a2e; }
     .error-state p  { font-size: 14px; color: #666; max-width: 280px; line-height: 1.5; }
 
-    /* ── DYNAMIC PANEL CONTAINER (Prevents overlaps) ── */
-    .bottom-panel-container {
-      position: absolute;
-      bottom: 24px; /* Increased bottom margin away from screen edges */
-      left: 16px;
-      right: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px; /* Gap between the floating button and the card below it */
-      z-index: 300;
-      pointer-events: none; /* Allows interacting with map elements behind empty spaces */
-    }
-
-    @media (min-width: 480px) {
-      .bottom-panel-container {
-        left: 50%;
-        right: auto;
-        transform: translateX(-50%);
-        width: 100%;
-        max-width: 440px;
-        bottom: 30px; /* Enhanced bottom padding for desktop web setup */
-      }
-    }
-
-    /* ── FAB buttons ── */
+    /* ── Native Floating Action Button ── */
     .fab-group {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      width: 100%;
-      pointer-events: auto; /* Re-enable pointer interactions */
+      position: absolute;
+      right: 16px;
+      bottom: calc(260px + 20px); /* Dynamically offsets above native default bottom sheet height */
+      z-index: 300;
+      transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .fab {
@@ -180,186 +142,211 @@
       border-radius: 50%;
       background: #fff;
       border: none;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: background 0.15s, transform 0.1s;
-      padding: 0;
-      overflow: hidden;
     }
-
-    .fab:hover  { background: #f0f0f0; }
+    .fab:hover  { background: #f8f9fa; }
     .fab:active { transform: scale(0.93); }
-    .fab img { width: 26px; height: 26px; object-fit: contain; }
-    .fab-emoji { font-size: 20px; line-height: 1; }
+    .fab img { width: 24px; height: 24px; object-fit: contain; }
+    .fab-emoji { font-size: 20px; }
 
-    /* ── Info card ── */
-    .info-card {
+    /* ── Native Mobile Bottom Sheet Component ── */
+    .bottom-sheet {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
       background: #fff;
-      border-radius: 20px;
-      box-shadow: 0 6px 36px rgba(0,0,0,0.16);
-      padding: 18px;
-      width: 100%;
-      display: none;
-      pointer-events: auto; /* Re-enable pointer interactions */
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      box-shadow: 0 -8px 36px rgba(0, 0, 0, 0.12);
+      z-index: 350;
+      display: flex;
+      flex-direction: column;
+      max-height: 50vh; /* Limits maximum expansion footprint */
+      min-height: 250px;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.1, 1, 0.1, 1);
     }
 
-    @media (min-width: 480px) {
-      .info-card {
-        padding: 20px 22px 18px;
+    .bottom-sheet.visible {
+      transform: translateY(0);
+    }
+
+    /* Drag Handle Handlebar Visual Element */
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      margin: 10px auto 4px;
+      flex-shrink: 0;
+    }
+
+    /* Scrollable Layout Body Element Container */
+    .sheet-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 24px 24px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (min-width: 600px) {
+      .bottom-sheet {
+        left: 50%;
+        transform: translate(-50%, 100%);
+        width: 100%;
+        max-width: 460px;
+        border-radius: 28px;
+        bottom: 20px;
+        max-height: 400px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
       }
+      .bottom-sheet.visible {
+        transform: translate(-50%, 0);
+      }
+      .sheet-handle { display: none; }
+      .fab-group { bottom: 440px !important; }
     }
 
+    /* ── Typography & Inside Details ── */
     .info-top {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
       margin-bottom: 12px;
     }
 
-    .info-avatar {
-      width: 46px;
-      height: 46px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: #6c47ff;
-      flex-shrink: 0;
-      border: 2px solid #ebebeb;
+    .user-profile-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
     }
 
-    .info-avatar-fallback {
-      width: 46px;
-      height: 46px;
+    .info-avatar, .info-avatar-fallback {
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .info-avatar { object-fit: cover; border: 1.5px solid #ebebeb; }
+    .info-avatar-fallback {
       background: #6c47ff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
-      flex-shrink: 0;
-      border: 2px solid #ebebeb;
-    }
-
-    .info-meta { flex: 1; min-width: 0; }
-    
-    .info-name {
       font-size: 18px;
       font-weight: 700;
-      color: #1a1a2e;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      color: #fff;
     }
 
-    .info-updated { font-size: 12px; color: #888; margin-top: 2px; }
+    .info-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #000000;
+      letter-spacing: -0.3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     .battery-tag {
       display: flex;
       align-items: center;
       gap: 4px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #555;
-      flex-shrink: 0;
+      background: #f5f5f7;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #000000;
     }
-    .battery-tag.low { color: #c0392b; }
-    .battery-tag.mid { color: #d68910; }
 
-    /* Address Style: Complete full wrap, light/thin weight, deep black text */
     .info-address {
-      font-size: 13.5px;
+      font-size: 15px;
       font-weight: 400;
       color: #000000;
       line-height: 1.5;
-      margin-bottom: 16px;
+      margin: 4px 0 6px 0;
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
 
-    .info-actions { display: flex; gap: 10px; }
+    .info-updated {
+      font-size: 13px;
+      color: #666666;
+      margin-bottom: 20px;
+    }
+
+    /* ── Action Buttons Block ── */
+    .info-actions {
+      display: flex;
+      gap: 12px;
+    }
 
     .directions-btn {
-      flex: 1;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
-      background: #6c47ff;
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      padding: 11px 16px;
-      font-size: 13px;
-      font-weight: 600;
+      gap: 8px;
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #dcdcdc;
+      border-radius: 24px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 700;
       cursor: pointer;
       text-decoration: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       transition: background 0.15s;
     }
-    .directions-btn:hover { background: #5a39d9; }
-    .directions-btn img { width: 18px; height: 18px; object-fit: contain; filter: brightness(10); }
+    .directions-btn:hover { background: #f8f9fa; }
+    .directions-btn img { width: 18px; height: 18px; object-fit: contain; }
 
     .copy-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
       background: #f5f5f7;
       color: #1a1a2e;
       border: none;
-      border-radius: 12px;
-      padding: 11px 16px;
-      font-size: 13px;
+      border-radius: 24px;
+      padding: 12px 20px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       transition: background 0.15s;
-      white-space: nowrap;
     }
     .copy-btn:hover { background: #ebebeb; }
 
-    /* ── Marker ── */
-   .marker-wrap { 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-    }
-
-    .marker-bubble {
-      width: 52px;
-      height: 52px;
+    /* ── Map Custom Pin Marker ── */
+   .marker-wrap { display: flex; flex-direction: column; align-items: center; }
+   .marker-bubble {
+      width: 54px;
+      height: 54px;
       border-radius: 50% 50% 50% 4px;
       border: 3px solid #fff;
-      box-shadow: 0 4px 16px rgba(108, 71, 255, 0.25);
+      box-shadow: 0 4px 16px rgba(108, 71, 255, 0.3);
       overflow: hidden;
       background: #6c47ff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
       color: #fff;
       transform-origin: bottom left; 
       transform: rotate(-45deg);
-      animation: breathe 2.4s ease-in-out infinite alternate;
     }
-
     .marker-bubble img { width: 100%; height: 100%; object-fit: cover; transform: rotate(45deg); }
     .marker-inner-text { transform: rotate(45deg); font-size: 18px; font-weight: 700; color: #fff; }
 
-    @keyframes breathe {
-      0% {
-        transform: rotate(-45deg) scale(0.96);
-        box-shadow: 0 3px 10px rgba(108, 71, 255, 0.2);
-      }
-      100% {
-        transform: rotate(-45deg) scale(1.04);
-        box-shadow: 0 5px 18px rgba(108, 71, 255, 0.35);
-      }
-    }
-
-    .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+    .leaflet-popup-content-wrapper { border-radius: 12px; }
     .leaflet-pane { z-index: 1 !important; }
     .leaflet-top, .leaflet-bottom { z-index: 200 !important; }
   </style>
@@ -388,25 +375,27 @@
       <p id="error-msg">This link is invalid or the live session has ended.</p>
     </div>
 
-    <div class="bottom-panel-container">
-      <div class="fab-group" id="fab-group" style="display:none">
-        <button class="fab" id="btn-my-location" title="My location">
-          <img src="asset/mylocation.png" alt="My location"
-               onerror="this.outerHTML='<span class=\'fab-emoji\'>📌</span>'" />
-        </button>
-      </div>
+    <div class="fab-group" id="fab-group" style="display:none">
+      <button class="fab" id="btn-my-location" title="My location">
+        <img src="asset/mylocation.png" alt="My location"
+             onerror="this.outerHTML='<span class=\'fab-emoji\'>🎯</span>'" />
+      </button>
+    </div>
 
-      <div class="info-card" id="info-card">
+    <div class="bottom-sheet" id="info-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-content">
+        
         <div class="info-top">
-          <div id="card-avatar-wrap"></div>
-          <div class="info-meta">
+          <div class="user-profile-meta">
+            <div id="card-avatar-wrap"></div>
             <div class="info-name" id="card-name"></div>
-            <div class="info-updated" id="card-updated"></div>
           </div>
           <div id="card-battery"></div>
         </div>
 
         <div class="info-address" id="card-address"></div>
+        <div class="info-updated" id="card-updated"></div>
 
         <div class="info-actions">
           <a class="directions-btn" id="directions-btn" href="#" target="_blank" rel="noopener">
@@ -415,6 +404,7 @@
           </a>
           <button class="copy-btn" id="copy-btn">Copy link</button>
         </div>
+
       </div>
     </div>
   </div>
@@ -462,9 +452,9 @@
       return L.divIcon({
         html:        `<div class="marker-wrap"><div class="marker-bubble">${inner}</div></div>`,
         className:   '',
-        iconSize:    [52, 56],
-        iconAnchor:  [26, 52],
-        popupAnchor: [0, -54]
+        iconSize:    [54, 58],
+        iconAnchor:  [27, 54],
+        popupAnchor: [0, -56]
       });
     }
 
@@ -476,11 +466,8 @@
       return `${Math.floor(diff / 3600)}h ago`;
     }
 
-    // Fixed template literal mapping logic configuration syntax structures
     function batteryHTML(pct) {
-      const cls  = pct <= 20 ? 'low' : pct <= 50 ? 'mid' : '';
-      const icon = pct <= 20 ? '🪫' : '🔋';
-      return `<div class="battery-tag ${cls}">${icon} ${pct}%</div>`;
+      return `🔋 ${pct}%`;
     }
 
     function avatarHTML(imgUrl, name) {
@@ -500,7 +487,7 @@
 
     function showError(msg) {
       document.getElementById('loading-state').style.display = 'none';
-      document.getElementById('info-card').style.display     = 'none';
+      document.getElementById('info-card').classList.remove('visible');
       document.getElementById('fab-group').style.display     = 'none';
       
       document.getElementById('error-state').style.display   = 'flex';
@@ -515,6 +502,15 @@
       const pill = document.getElementById('expiry-pill');
       pill.textContent = 'Session Ended';
       pill.className   = 'expiry-pill expired';
+    }
+
+    // Adjusting functional floating buttons layouts responsively based on rendered heights
+    function adjustFabPosition() {
+      const card = document.getElementById('info-card');
+      const fabGroup = document.getElementById('fab-group');
+      if (window.innerWidth < 600 && card.classList.contains('visible')) {
+        fabGroup.style.bottom = `${card.offsetHeight + 16}px`;
+      }
     }
 
     // ── "My Location" FAB ──
@@ -557,7 +553,7 @@
       document.getElementById('loading-state').style.display = 'none';
       document.getElementById('error-state').style.display   = 'none';
       document.getElementById('map').classList.remove('blur-map');
-      document.getElementById('info-card').style.display     = 'block';
+      document.getElementById('info-card').classList.add('visible');
       document.getElementById('fab-group').style.display     = 'flex';
 
       const latlng = [d.latitude, d.longitude];
@@ -578,24 +574,27 @@
         map.panTo(latlng, { animate: true, duration: 0.8 });
       }
 
-      // Card data rendering configurations
+      // Populate layout elements
       document.getElementById('card-avatar-wrap').innerHTML  = avatarHTML(d.profileImageUrl, d.userName);
       document.getElementById('card-name').textContent       = d.userName || 'Unknown';
       document.getElementById('card-battery').innerHTML      = batteryHTML(d.battery ?? 0);
       document.getElementById('card-address').textContent    = d.address || 'Address unavailable';
-      document.getElementById('card-updated').textContent    = 'Updated ' + timeAgo(d.timeStamp);
+      document.getElementById('card-updated').textContent    = 'Last updated ' + timeAgo(d.timeStamp);
 
-      // Deep linked navigation actions structural parameters
-      document.getElementById('directions-btn').href = `https://www.google.com/maps/search/?api=1&query=${d.latitude},${d.longitude}`;
+      // Dynamically corrected template strings URL configuration 
+      document.getElementById('directions-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${d.latitude},${d.longitude}`;
 
       const pill = document.getElementById('expiry-pill');
-      pill.textContent = '⏱ ' + exp.text;
+      pill.textContent = exp.text;
       pill.className   = 'expiry-pill ' + exp.cls;
+
+      // Ensure button positions adapt dynamically after parsing address sizes
+      setTimeout(adjustFabPosition, 50);
 
       if (updateTimer) clearInterval(updateTimer);
       updateTimer = setInterval(() => {
         const el = document.getElementById('card-updated');
-        if (el) el.textContent = 'Updated ' + timeAgo(d.timeStamp);
+        if (el) el.textContent = 'Last updated ' + timeAgo(d.timeStamp);
         
         if (Date.now() > d.expiresAt) {
           showError('This live session has ended.');
@@ -603,6 +602,9 @@
         }
       }, 15000);
     }
+
+    // Resize listeners tracking structural canvas modifications
+    window.addEventListener('resize', adjustFabPosition);
 
     // ── Firebase listener ──
     const key = new URLSearchParams(location.search).get('key');
