@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Safe Circle — Live Location</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2 family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f5f5f7;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: #fff;
+      border-bottom: 1px solid #ebebeb;
+      z-index: 500;
+      flex-shrink: 0;
+    }
+
+    .logo-wrap {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      background: #6c47ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+
+    .brand { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+    .brand span { color: #6c47ff; }
+
+    .expiry-pill {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #f0f0f0;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    .expiry-pill.live    { background: #edfdf4; color: #1a7a45; }
+    .expiry-pill.expired { background: #fef0f0; color: #c0392b; }
+
+    /* ── Map Container (Padded & Rounded to match the image) ── */
+    #map-wrap {
+      flex: 1;
+      position: relative;
+      margin: 25px;
+      border-radius: 36px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      background: #fff;
+    }
+
+    #map { 
+      width: 100%; 
+      height: 100%; 
+      transition: filter 0.4s ease;
+    }
+
+    /* Blur state when session expires or error happens */
+    .blur-map {
+      filter: blur(12px) grayscale(30%);
+      pointer-events: none;
+    }
+
+    /* ── Loading overlay ── */
+    .map-loading {
+      position: absolute;
+      inset: 0;
+      background: #f5f5f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      z-index: 400;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #6c47ff;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .map-loading p { font-size: 14px; color: #888; font-weight: 500; }
+
+    /* ── Error overlay ── */
+    .error-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: rgba(245, 245, 247, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 400;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .error-state .icon { font-size: 40px; }
+    .error-state h2 { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+    .error-state p  { font-size: 14px; color: #666; max-width: 280px; line-height: 1.5; }
+
+    /* ── FAB buttons (right side) ── */
+    .fab-group {
+      position: absolute;
+      right: 16px;
+      bottom: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 300;
+    }
+
+    .fab {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .fab:hover  { background: #f0f0f0; }
+    .fab:active { transform: scale(0.93); }
+    .fab img { width: 26px; height: 26px; object-fit: contain; }
+    .fab-emoji { font-size: 20px; line-height: 1; }
+
+    /* ── Info card ── */
+    .info-card {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.18);
+      padding: 18px 20px 16px;
+      width: calc(100vw - 64px);
+      max-width: 420px;
+      z-index: 300;
+      display: none;
+    }
+
+    .info-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .info-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #6c47ff;
+      flex-shrink: 0;
+      border: 2px solid #ebebeb;
+    }
+
+    .info-avatar-fallback {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #6c47ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+      border: 2px solid #ebebeb;
+    }
+
+    .info-meta { flex: 1; min-width: 0; }
+    .info-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1a1a2e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .info-updated { font-size: 12px; color: #999; margin-top: 2px; }
+
+    .battery-tag {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      flex-shrink: 0;
+    }
+    .battery-tag.low { color: #c0392b; }
+    .battery-tag.mid { color: #d68910; }
+
+    .info-address {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.45;
+      margin-bottom: 14px;
+    }
+
+    .info-actions { display: flex; gap: 10px; }
+
+    .directions-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      background: #6c47ff;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 11px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .directions-btn:hover { background: #5a39d9; }
+    .directions-btn img { width: 18px; height: 18px; object-fit: contain; filter: brightness(10); }
+
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      background: #f5f5f7;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 12px;
+      padding: 11px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: #ebebeb; }
+
+    /* ── Marker ── */
+    .marker-wrap { display: flex; flex-direction: column; align-items: center; }
+
+    .marker-bubble {
+      width: 52px;
+      height: 52px;
+      border-radius: 50% 50% 50% 4px;
+      border: 3px solid #fff;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.25);
+      overflow: hidden;
+      background: #6c47ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #fff;
+      transform: rotate(-45deg);
+      animation: pulse 2.5s infinite;
+    }
+
+    .marker-bubble img { width: 100%; height: 100%; object-fit: cover; transform: rotate(45deg); }
+    .marker-inner-text { transform: rotate(45deg); font-size: 18px; font-weight: 700; color: #fff; }
+
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 3px 14px rgba(0,0,0,0.25), 0 0 0 0   rgba(108,71,255,0.4); }
+      50%      { box-shadow: 0 3px 14px rgba(0,0,0,0.25), 0 0 0 10px rgba(108,71,255,0);   }
+    }
+
+    .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+    .leaflet-pane { z-index: 1 !important; }
+    .leaflet-top, .leaflet-bottom { z-index: 200 !important; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-wrap">
+      <img src="asset/logo.webp" alt="" onerror="this.parentElement.innerHTML='🛡️'" />
+    </div>
+    <span class="brand">Safe<span>Circle</span></span>
+    <div class="expiry-pill" id="expiry-pill">⏳ Loading…</div>
+  </header>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+
+    <div class="map-loading" id="loading-state">
+      <div class="spinner"></div>
+      <p>Fetching live location…</p>
+    </div>
+
+    <div class="error-state" id="error-state" style="display:none">
+      <div class="icon">⌛</div>
+      <h2>Session Expired</h2>
+      <p id="error-msg">This link is invalid or the live session has ended.</p>
+    </div>
+
+    <div class="fab-group" id="fab-group" style="display:none">
+      <button class="fab" id="btn-my-location" title="My location">
+        <img src="asset/mylocation.png" alt="My location"
+             onerror="this.outerHTML='<span class=\'fab-emoji\'>📌</span>'" />
+      </button>
+    </div>
+
+    <div class="info-card" id="info-card">
+      <div class="info-top">
+        <div id="card-avatar-wrap"></div>
+        <div class="info-meta">
+          <div class="info-name" id="card-name"></div>
+          <div class="info-updated" id="card-updated"></div>
+        </div>
+        <div id="card-battery"></div>
+      </div>
+
+      <div class="info-address" id="card-address"></div>
+
+      <div class="info-actions">
+        <a class="directions-btn" id="directions-btn" href="#" target="_blank" rel="noopener">
+          <img src="asset/directions.png" alt="" onerror="this.style.display='none'" />
+          Directions
+        </a>
+        <button class="copy-btn" id="copy-btn">Copy link</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyAA1z6nIJ8fsIN4FpVjWXrEeMsT0M35fZ0",
+      authDomain:        "safe-circle-8904a.firebaseapp.com",
+      databaseURL:       "https://safe-circle-8904a-default-rtdb.firebaseio.com",
+      projectId:         "safe-circle-8904a",
+      storageBucket:     "safe-circle-8904a.firebasestorage.app",
+      messagingSenderId: "365977499511",
+      appId:             "1:365977499511:web:31664d25e1cdef61b99372",
+      measurementId:     "G-CL0Y8LLBYV"
+    };
+
+    const db = getDatabase(initializeApp(firebaseConfig));
+
+    // ── Map setup ──
+    const map = L.map('map', { zoomControl: false, attributionControl: true });
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(map);
+    map.setView([20, 78], 5);
+
+    let marker    = null;
+    let firstLoad = true;
+    let myLocMarker = null;
+    let updateTimer = null;
+
+    // ── Helpers ──
+    function initials(name) {
+      return (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    }
+
+    function makeMarkerIcon(imgUrl, name) {
+      const inner = imgUrl
+        ? `<img src="${imgUrl}" alt="" onerror="this.parentElement.innerHTML='<span class=\\'marker-inner-text\\'>${initials(name)}</span>'" />`
+        : `<span class="marker-inner-text">${initials(name)}</span>`;
+      return L.divIcon({
+        html:        `<div class="marker-wrap"><div class="marker-bubble">${inner}</div></div>`,
+        className:   '',
+        iconSize:    [52, 56],
+        iconAnchor:  [26, 52],
+        popupAnchor: [0, -54]
+      });
+    }
+
+    function timeAgo(ts) {
+      const diff = Math.floor((Date.now() - ts) / 1000);
+      if (diff < 10)   return 'Just now';
+      if (diff < 60)   return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      return `${Math.floor(diff / 3600)}h ago`;
+    }
+
+    function batteryHTML(pct) {
+      const cls  = pct <= 20 ? 'low' : pct <= 50 ? 'mid' : '';
+      const icon = pct <= 20 ? '🪫' : '🔋';
+      return `<div class="battery-tag ${cls}">${icon} ${pct}%</div>`;
+    }
+
+    function avatarHTML(imgUrl, name) {
+      if (imgUrl) {
+        return `<img class="info-avatar" src="${imgUrl}" alt="${name}" onerror="this.outerHTML='<div class=\\'info-avatar-fallback\\'>${initials(name)}</div>'" />`;
+      }
+      return `<div class="info-avatar-fallback">${initials(name)}</div>`;
+    }
+
+    function expiryText(expiresAt) {
+      const diff = expiresAt - Date.now();
+      if (diff <= 0) return { text: 'Session expired', cls: 'expired', isExpired: true };
+      const m = Math.floor(diff / 60000);
+      const h = Math.floor(m / 60);
+      return { text: h > 0 ? `Expires in ${h}h ${m % 60}m` : `Expires in ${m}m`, cls: 'live', isExpired: false };
+    }
+
+    function showError(msg) {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('info-card').style.display     = 'none';
+      document.getElementById('fab-group').style.display     = 'none';
+      
+      // Show error overlay and blur map layer
+      document.getElementById('error-state').style.display   = 'flex';
+      document.getElementById('error-msg').textContent       = msg;
+      document.getElementById('map').classList.add('blur-map');
+      
+      // Remove tracker marker if existing
+      if (marker) {
+        map.removeLayer(marker);
+        marker = null;
+      }
+
+      const pill = document.getElementById('expiry-pill');
+      pill.textContent = 'Session Ended';
+      pill.className   = 'expiry-pill expired';
+    }
+
+    // ── "My Location" FAB ──
+    document.getElementById('btn-my-location').addEventListener('click', () => {
+      if (!navigator.geolocation) { alert('Geolocation not supported by your browser.'); return; }
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const latlng = [pos.coords.latitude, pos.coords.longitude];
+          map.setView(latlng, 16, { animate: true });
+          if (myLocMarker) {
+            myLocMarker.setLatLng(latlng);
+          } else {
+            myLocMarker = L.circleMarker(latlng, {
+              radius: 9, color: '#fff', weight: 3,
+              fillColor: '#4285f4', fillOpacity: 1
+            }).addTo(map).bindPopup('You are here');
+          }
+        },
+        () => alert('Could not get your location. Please allow location access.')
+      );
+    });
+
+    // ── Copy link ──
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText(location.href).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => { btn.textContent = '🔗 Copy link'; }, 2000);
+      });
+    });
+
+    // ── Main update ──
+    function update(d) {
+      // Direct session expiration check
+      const exp = expiryText(d.expiresAt);
+      if (exp.isExpired) {
+        showError('This live session has ended.');
+        return;
+      }
+
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('error-state').style.display   = 'none';
+      document.getElementById('map').classList.remove('blur-map');
+      document.getElementById('info-card').style.display     = 'block';
+      document.getElementById('fab-group').style.display     = 'flex';
+
+      const latlng = [d.latitude, d.longitude];
+      const icon   = makeMarkerIcon(d.profileImageUrl, d.userName);
+
+      if (marker) {
+        marker.setLatLng(latlng);
+        marker.setIcon(icon);
+      } else {
+        marker = L.marker(latlng, { icon }).addTo(map);
+        marker.on('click', () => map.setView(marker.getLatLng(), 16, { animate: true }));
+      }
+
+      if (firstLoad) {
+        map.setView(latlng, 16);
+        firstLoad = false;
+      } else {
+        map.panTo(latlng, { animate: true, duration: 0.8 });
+      }
+
+      // Card content
+      document.getElementById('card-avatar-wrap').innerHTML  = avatarHTML(d.profileImageUrl, d.userName);
+      document.getElementById('card-name').textContent       = d.userName || 'Unknown';
+      document.getElementById('card-battery').innerHTML      = batteryHTML(d.battery ?? 0);
+      document.getElementById('card-address').textContent    = d.address || 'Address unavailable';
+      document.getElementById('card-updated').textContent    = 'Updated ' + timeAgo(d.timeStamp);
+
+      // Corrected Directions URL structure
+      document.getElementById('directions-btn').href = `https://www.google.com/maps/dir/?api=1&destination=${d.latitude},${d.longitude}`;
+
+      const pill = document.getElementById('expiry-pill');
+      pill.textContent = '⏱ ' + exp.text;
+      pill.className   = 'expiry-pill ' + exp.cls;
+
+      if (updateTimer) clearInterval(updateTimer);
+      updateTimer = setInterval(() => {
+        const el = document.getElementById('card-updated');
+        if (el) el.textContent = 'Updated ' + timeAgo(d.timeStamp);
+        
+        // Re-verify expiration during runtime intervals
+        if (Date.now() > d.expiresAt) {
+          showError('This live session has ended.');
+          clearInterval(updateTimer);
+        }
+      }, 15000);
+    }
+
+    // ── Firebase listener ──
+    const key = new URLSearchParams(location.search).get('key');
+
+    if (!key) {
+      showError('No active live session found.');
+    } else {
+      onValue(
+        ref(db, `Location/SharedUserLocation/${key}`),
+        snap => {
+          if (!snap.exists()) { 
+            showError('This session no longer exists or the link is invalid.'); 
+            return; 
+          }
+          update(snap.val());
+        },
+        err => showError('Could not load location: ' + err.message)
+      );
+    }
+  </script>
+</body>
+</html>

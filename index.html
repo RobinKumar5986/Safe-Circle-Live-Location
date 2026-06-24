@@ -1,11 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Safe Circle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #ffffff;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 40px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a2e;
+      text-decoration: none;
+    }
+
+    .nav-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+
+    .nav-brand .logo-fallback {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #6c47ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .nav-brand span { color: #6c47ff; }
+
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px;
+      gap: 20px;
+    }
+
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f0ebff;
+      color: #6c47ff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      letter-spacing: .3px;
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      color: #1a1a2e;
+      max-width: 700px;
+    }
+
+    .hero h1 span { color: #6c47ff; }
+
+    .hero p {
+      font-size: 17px;
+      color: #666;
+      max-width: 480px;
+      line-height: 1.6;
+    }
+
+    .features {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .feature-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fafafa;
+      border: 1px solid #ebebeb;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #444;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: #aaa;
+      border-top: 1px solid #f0f0f0;
+    }
+  </style>
 </head>
 <body>
-    
+
+  <nav>
+    <a class="nav-brand" href="/">
+      <div class="logo-fallback" id="logo-wrap">
+        <img src="asset/logo.webp" alt="Safe Circle"
+             style="width:32px;height:32px;border-radius:8px;object-fit:cover"
+             onerror="this.parentElement.innerHTML='🛡️'" />
+      </div>
+      Safe<span>Circle</span>
+    </a>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-pill">🛡️ Real-time location sharing</div>
+    <h1>Always know where your<br /><span>circle</span> is</h1>
+    <p>Share your live location with people you trust. No sign-up needed — just open the link and see where they are in real time.</p>
+    <div class="features">
+      <div class="feature-chip">📍 Live GPS tracking</div>
+      <div class="feature-chip">🔋 Battery status</div>
+      <div class="feature-chip">⏱ Session expiry</div>
+      <div class="feature-chip">🗺️ OpenStreetMap</div>
+    </div>
+  </section>
+
+  <footer>Safe Circle &copy; 2025 — Location sharing, simplified.</footer>
+
 </body>
 </html>
